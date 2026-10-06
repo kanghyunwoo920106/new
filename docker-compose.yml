@@ -1,0 +1,118 @@
+# LumenPost Phase 1 — standard local / laptop stack (Docker bridge network)
+#
+# Usage:
+#   cp .env.example .env          # optional: ANTHROPIC_API_KEY=...
+#   docker compose up --build
+#
+#   Blog + admin: http://127.0.0.1:3847
+#   API (direct): http://127.0.0.1:8471/health
+#   Browser calls /api via Next.js same-origin rewrites.
+#
+# macOS/Windows: use this file (not docker-compose.host.yml).
+# Restricted Linux VMs with broken bridge: docker compose -f docker-compose.host.yml up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: autopost
+      POSTGRES_PASSWORD: autopost
+      POSTGRES_DB: autopost
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autopost -d autopost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@db:5432/autopost
+      REDIS_URL: redis://redis:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: http://127.0.0.1:3847
+      CORS_ORIGINS: http://127.0.0.1:3847,http://localhost:3847
+      API_HOST: 0.0.0.0
+      API_PORT: "8471"
+    ports:
+      - "8471:8471"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["celery", "-A", "autopost_api.workers.celery_app.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@db:5432/autopost
+      REDIS_URL: redis://redis:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: http://127.0.0.1:3847
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  beat:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["celery", "-A", "autopost_api.workers.celery_app.celery_app", "beat", "--loglevel=INFO"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@db:5432/autopost
+      REDIS_URL: redis://redis:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: http://127.0.0.1:3847
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE: ""
+        API_INTERNAL_BASE: http://api:8471
+    environment:
+      API_INTERNAL_BASE: http://api:8471
+      PORT: "3847"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3847:3847"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

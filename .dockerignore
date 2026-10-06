@@ -1,0 +1,12 @@
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+**/data
+**/.git
+**/.env
+**/uv.lock.bak
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+**/*.log

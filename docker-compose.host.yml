@@ -1,0 +1,108 @@
+# Host-network variant for restricted Linux VMs where Docker bridge/nftables fails.
+# Prefer docker-compose.yml on laptops (macOS/Windows/Linux with working bridge).
+#
+#   docker compose -f docker-compose.host.yml up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    network_mode: host
+    environment:
+      POSTGRES_USER: autopost
+      POSTGRES_PASSWORD: autopost
+      POSTGRES_DB: autopost
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autopost -d autopost -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    network_mode: host
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@127.0.0.1:5432/autopost
+      REDIS_URL: redis://127.0.0.1:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: ${SITE_PUBLIC_BASE_URL:-http://127.0.0.1:3847}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      API_HOST: 0.0.0.0
+      API_PORT: "8471"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    network_mode: host
+    command: ["celery", "-A", "autopost_api.workers.celery_app.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@127.0.0.1:5432/autopost
+      REDIS_URL: redis://127.0.0.1:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: ${SITE_PUBLIC_BASE_URL:-http://127.0.0.1:3847}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  beat:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    network_mode: host
+    command: ["celery", "-A", "autopost_api.workers.celery_app.celery_app", "beat", "--loglevel=INFO"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://autopost:autopost@127.0.0.1:5432/autopost
+      REDIS_URL: redis://127.0.0.1:6379/0
+      SCHEDULER_BACKEND: celery
+      SITE_PUBLIC_BASE_URL: ${SITE_PUBLIC_BASE_URL:-http://127.0.0.1:3847}
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE: ""
+        API_INTERNAL_BASE: http://127.0.0.1:8471
+    network_mode: host
+    environment:
+      API_INTERNAL_BASE: http://127.0.0.1:8471
+      PORT: "3847"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
