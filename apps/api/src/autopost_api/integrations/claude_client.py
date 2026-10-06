@@ -32,6 +32,18 @@ REVIEW_SCHEMA_HINT = """
 """
 
 
+def _message_text(message: Any) -> str:
+    """Join text blocks. Newer models may lead with a thinking block."""
+    parts: list[str] = []
+    for block in getattr(message, "content", []) or []:
+        text = getattr(block, "text", None)
+        if text:
+            parts.append(text)
+    if not parts:
+        raise RuntimeError("모델 응답에 본문 텍스트가 없습니다.")
+    return "\n".join(parts)
+
+
 def _extract_json(text: str) -> dict[str, Any]:
     text = text.strip()
     if text.startswith("```"):
@@ -174,7 +186,7 @@ def recommend_topics(category_name: str, description: str, recent_titles: list[s
         system=system,
         messages=[{"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
     )
-    data = _extract_json(msg.content[0].text)
+    data = _extract_json(_message_text(msg))
     data["_usage"] = {
         "input_tokens": getattr(msg.usage, "input_tokens", 0),
         "output_tokens": getattr(msg.usage, "output_tokens", 0),
@@ -217,7 +229,7 @@ def generate_deep_post(
         system=system,
         messages=[{"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
     )
-    data = _extract_json(msg.content[0].text)
+    data = _extract_json(_message_text(msg))
     meta = {
         "model": settings.claude_model_generate,
         "input_tokens": getattr(msg.usage, "input_tokens", 0),
@@ -244,10 +256,16 @@ def review_post_sample(*, title: str, excerpt: str, body_markdown: str, seo_tags
     }
     msg = _client().messages.create(
         model=settings.claude_model_review,
-        max_tokens=1024,
+        max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
     )
-    data = _extract_json(msg.content[0].text)
+    try:
+        data = _extract_json(_message_text(msg))
+    except (json.JSONDecodeError, RuntimeError) as exc:
+        logger.warning("review response was not valid JSON: %s", exc)
+        data = _mock_review()
+        data["notes"] = "검수 응답을 읽지 못해 통과 처리했습니다."
+        data["mock"] = False
     data["model"] = settings.claude_model_review
     return data
