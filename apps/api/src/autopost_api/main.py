@@ -66,11 +66,7 @@ def health() -> HealthOut:
         scheduler=settings.effective_scheduler,
         configured_channels=settings.configured_channels,
         autopilot_enabled=settings.autopilot_enabled,
-        autopilot_time=(
-            f"{settings.autopilot_hour:02d}:{settings.autopilot_minute:02d} {settings.timezone}"
-            if settings.autopilot_enabled
-            else ""
-        ),
+        autopilot_time=settings.autopilot_time_label() if settings.autopilot_enabled else "",
     )
 
 

@@ -80,23 +80,22 @@ def start_scheduler() -> BackgroundScheduler:
     if settings.autopilot_enabled:
         from autopost_api.services.autopilot import run_autopilot
 
-        scheduler.add_job(
-            run_autopilot,
-            "cron",
-            hour=settings.autopilot_hour,
-            minute=settings.autopilot_minute,
-            timezone=settings.timezone,
-            id="autopilot-daily",
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=3600,
-        )
+        for hour, minute in settings.autopilot_clock_times():
+            scheduler.add_job(
+                run_autopilot,
+                "cron",
+                hour=hour,
+                minute=minute,
+                timezone=settings.timezone,
+                id=f"autopilot-{hour:02d}{minute:02d}",
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=3600,
+            )
         logger.info(
-            "autopilot daily at %02d:%02d %s channels=%s",
-            settings.autopilot_hour,
-            settings.autopilot_minute,
-            settings.timezone,
+            "autopilot at %s channels=%s",
+            settings.autopilot_time_label(),
             settings.autopilot_channels,
         )
     scheduler.start()

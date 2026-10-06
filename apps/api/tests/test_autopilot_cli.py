@@ -6,6 +6,32 @@ from autopost_api.services import autopilot
 from autopost_api.workers import enqueue
 
 
+class AutopilotScheduleTests(unittest.TestCase):
+    def setUp(self):
+        self._saved = (settings.autopilot_hours, settings.autopilot_hour, settings.autopilot_minute, settings.timezone)
+
+    def tearDown(self):
+        settings.autopilot_hours, settings.autopilot_hour, settings.autopilot_minute, settings.timezone = self._saved
+
+    def test_four_daily_slots(self):
+        settings.autopilot_hours = "9,12,15,18"
+        settings.autopilot_minute = 0
+        settings.timezone = "Asia/Seoul"
+        self.assertEqual(settings.autopilot_clock_times(), [(9, 0), (12, 0), (15, 0), (18, 0)])
+        self.assertEqual(settings.autopilot_time_label(), "09:00,12:00,15:00,18:00 Asia/Seoul")
+
+    def test_empty_hours_fall_back_to_single_hour(self):
+        settings.autopilot_hours = ""
+        settings.autopilot_hour = 9
+        settings.autopilot_minute = 0
+        self.assertEqual(settings.autopilot_clock_times(), [(9, 0)])
+
+    def test_invalid_hours_are_skipped(self):
+        settings.autopilot_hours = "9,noon,15,18,9"
+        settings.autopilot_minute = 0
+        self.assertEqual(settings.autopilot_clock_times(), [(9, 0), (15, 0), (18, 0)])
+
+
 class AutopilotCliTests(unittest.TestCase):
     def setUp(self):
         self._scheduler_backend = settings.scheduler_backend

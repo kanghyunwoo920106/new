@@ -1,9 +1,13 @@
-name: Daily Blogger autopost
+name: Blogger autopost
 
-# 00:00 UTC = 09:00 Asia/Seoul. GitHub-hosted runners stay up when a laptop is off.
+# GitHub cron is UTC. These four lines are 09:00, 12:00, 15:00, and 18:00 in Asia/Seoul.
+# Hosted runners stay up when a laptop is off. Each run publishes one post.
 on:
   schedule:
     - cron: "0 0 * * *"
+    - cron: "0 3 * * *"
+    - cron: "0 6 * * *"
+    - cron: "0 9 * * *"
   workflow_dispatch:
 
 jobs:

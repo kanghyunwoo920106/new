@@ -75,8 +75,10 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_refresh_token: str = ""
 
-    # Daily unattended posting. Hour is interpreted in TIMEZONE.
+    # Unattended posting. Hours are interpreted in TIMEZONE.
+    # AUTOPILOT_HOURS wins. AUTOPILOT_HOUR is the fallback when the list is empty.
     autopilot_enabled: bool = False
+    autopilot_hours: str = "9,12,15,18"
     autopilot_hour: int = 9
     autopilot_minute: int = 0
     autopilot_channels: str = "blogger"
@@ -101,6 +103,30 @@ class Settings(BaseSettings):
     @property
     def effective_scheduler(self) -> str:
         return "celery" if self.use_celery else "apscheduler"
+
+    def autopilot_clock_times(self) -> list[tuple[int, int]]:
+        """Local clock times for one post each. Hours come from AUTOPILOT_HOURS."""
+        minute = min(59, max(0, int(self.autopilot_minute)))
+        hours: list[int] = []
+        for part in self.autopilot_hours.split(","):
+            text = part.strip()
+            if not text:
+                continue
+            try:
+                hour = int(text)
+            except ValueError:
+                continue
+            if 0 <= hour <= 23 and hour not in hours:
+                hours.append(hour)
+        if not hours:
+            hour = int(self.autopilot_hour)
+            if 0 <= hour <= 23:
+                hours = [hour]
+        return [(hour, minute) for hour in hours]
+
+    def autopilot_time_label(self) -> str:
+        clocks = ",".join(f"{hour:02d}:{minute:02d}" for hour, minute in self.autopilot_clock_times())
+        return f"{clocks} {self.timezone}"
 
     def channel_configured(self, code: str) -> bool:
         if code == "site":
