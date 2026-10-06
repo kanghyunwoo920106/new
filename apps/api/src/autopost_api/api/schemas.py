@@ -122,3 +122,5 @@ class HealthOut(BaseModel):
     database: str
     scheduler: str
     configured_channels: list[str] = Field(default_factory=lambda: ["site"])
+    autopilot_enabled: bool = False
+    autopilot_time: str = ""

@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_refresh_token: str = ""
 
+    # Daily unattended posting. Hour is interpreted in TIMEZONE.
+    autopilot_enabled: bool = False
+    autopilot_hour: int = 9
+    autopilot_minute: int = 0
+    autopilot_channels: str = "blogger"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
