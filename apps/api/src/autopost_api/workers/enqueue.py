@@ -35,3 +35,14 @@ def enqueue_batch(batch_id: str) -> str:
         return "celery"
     _pool.submit(_run_batch_inline, batch_id)
     return "thread"
+
+
+def wait_inline() -> None:
+    """Block until background inline batches finish.
+
+    One-shot runners (GitHub Actions) must call this before publishing, because
+    the process would otherwise exit while generation is still in a thread.
+    """
+    global _pool
+    _pool.shutdown(wait=True, cancel_futures=False)
+    _pool = ThreadPoolExecutor(max_workers=2)

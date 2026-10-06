@@ -115,3 +115,64 @@ def run_autopilot() -> str:
         return "failed"
     finally:
         db.close()
+
+
+_FAILURES = frozenset(
+    {"failed", "no-key", "no-channel", "no-category", "no-topics", "no-user", "disabled"}
+)
+
+
+def main() -> None:
+    """One-shot entrypoint for an always-on scheduler such as GitHub Actions.
+
+    Generates one post, waits until that work finishes, publishes due jobs,
+    then exits. A non-zero exit means nothing was published.
+    """
+    logging.basicConfig(level=logging.INFO)
+    from autopost_api.db.models import Base, PublishJob
+    from autopost_api.db.seed import seed_if_empty
+    from autopost_api.db.session import SessionLocal, engine
+    from autopost_api.workers.enqueue import wait_inline
+    from autopost_api.workers.scheduler import dispatch_due_jobs
+
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_if_empty(db)
+    finally:
+        db.close()
+
+    result = run_autopilot()
+    print(result)
+    if result in _FAILURES:
+        raise SystemExit(1)
+    if settings.use_celery:
+        logger.error("autopilot one-shot requires the inline scheduler, not Celery")
+        raise SystemExit(1)
+
+    wait_inline()
+    published = dispatch_due_jobs()
+    print(f"published={published}")
+
+    db = SessionLocal()
+    try:
+        batch = db.get(Batch, result)
+        if batch is None or batch.status != "ready":
+            status = batch.status if batch is not None else "missing"
+            print(f"batch_status={status}")
+            raise SystemExit(1)
+        post_ids = [item.post_id for item in batch.items if item.post_id]
+        jobs = []
+        if post_ids:
+            jobs = list(db.scalars(select(PublishJob).where(PublishJob.post_id.in_(post_ids))).all())
+        failed = [job for job in jobs if job.status != "succeeded"]
+        if not jobs or failed or published < 1:
+            summary = ",".join(f"{job.channel_code}:{job.status}" for job in jobs) or "none"
+            print(f"publish_jobs={summary}")
+            raise SystemExit(1)
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()

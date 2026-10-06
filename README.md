@@ -116,6 +116,7 @@ docker-compose.host.yml   Host-network fallback for restricted Linux VMs
 
 ## Notes
 
-- 발행 채널: 자체 사이트, 티스토리, 구글 블로거. 토큰은 `.env`에만 둡니다. 네이버 블로그 자동 발행은 없습니다.  
+- 발행 채널: 자체 사이트, 티스토리, 구글 블로거. 토큰은 `.env`에만 둡니다. 네이버 블로그 자동 발행은 없습니다.
+- 매일 오전 9시(한국 시간) GitHub Actions가 블로거에 글 하나를 발행합니다. 워크플로는 저장소 기본 브랜치의 `.github/workflows/autopilot.yml`이며, 키는 Actions 시크릿에만 둡니다.  
 - AdSense: placeholder slots only.  
 - Cloud agent `127.0.0.1` is not your laptop — use a published public URL or Try Live for the agent VM.
