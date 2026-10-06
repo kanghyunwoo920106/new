@@ -64,6 +64,7 @@ def health() -> HealthOut:
         mock_claude=settings.use_mock_claude,
         database=settings.database_url.split("://")[0],
         scheduler=settings.effective_scheduler,
+        configured_channels=settings.configured_channels,
     )
 
 

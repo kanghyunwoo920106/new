@@ -64,6 +64,17 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8471
 
+    # Tistory Open API — https://tistory.github.io/document-tistory-apis/
+    tistory_access_token: str = ""
+    tistory_blog_name: str = ""
+
+    # Google Blogger API v3. Prefer a refresh token; access token expires in about an hour.
+    blogger_blog_id: str = ""
+    blogger_access_token: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_refresh_token: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -84,6 +95,26 @@ class Settings(BaseSettings):
     @property
     def effective_scheduler(self) -> str:
         return "celery" if self.use_celery else "apscheduler"
+
+    def channel_configured(self, code: str) -> bool:
+        if code == "site":
+            return True
+        if code == "tistory":
+            return bool(self.tistory_access_token.strip() and self.tistory_blog_name.strip())
+        if code == "blogger":
+            has_blog = bool(self.blogger_blog_id.strip())
+            has_refresh = bool(
+                self.google_client_id.strip()
+                and self.google_client_secret.strip()
+                and self.google_refresh_token.strip()
+            )
+            has_access = bool(self.blogger_access_token.strip())
+            return has_blog and (has_refresh or has_access)
+        return False
+
+    @property
+    def configured_channels(self) -> list[str]:
+        return [code for code in ("site", "tistory", "blogger") if self.channel_configured(code)]
 
 
 settings = Settings()

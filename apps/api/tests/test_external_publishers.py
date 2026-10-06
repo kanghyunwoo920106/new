@@ -1,0 +1,82 @@
+import unittest
+from unittest.mock import MagicMock, patch
+
+from autopost_api.config import settings
+from autopost_api.services.publishers.blogger_publisher import BloggerPublisher
+from autopost_api.services.publishers.tistory_publisher import TistoryPublisher
+
+
+class _Tag:
+    def __init__(self, tag: str):
+        self.tag = tag
+
+
+class _Post:
+    def __init__(self):
+        self.title = "정리 시작"
+        self.body_html = "<p>본문</p>"
+        self.body_markdown = "본문"
+        self.excerpt = "요약"
+        self.status = "ready"
+        self.published_at = None
+        self.seo_tags = [_Tag("정리")]
+
+
+class ExternalPublisherTests(unittest.TestCase):
+    def setUp(self):
+        self._saved = {
+            "tistory_access_token": settings.tistory_access_token,
+            "tistory_blog_name": settings.tistory_blog_name,
+            "blogger_blog_id": settings.blogger_blog_id,
+            "blogger_access_token": settings.blogger_access_token,
+            "google_client_id": settings.google_client_id,
+            "google_client_secret": settings.google_client_secret,
+            "google_refresh_token": settings.google_refresh_token,
+        }
+
+    def tearDown(self):
+        for key, value in self._saved.items():
+            setattr(settings, key, value)
+
+    def test_tistory_write_uses_official_endpoint(self):
+        settings.tistory_access_token = "token"
+        settings.tistory_blog_name = "lumen"
+        response = MagicMock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"tistory": {"status": "200", "postId": "9", "url": "https://lumen.tistory.com/9"}}
+        with patch("autopost_api.services.publishers.tistory_publisher.httpx.post", return_value=response) as post:
+            result = TistoryPublisher().publish(_Post())
+        self.assertEqual(result["url"], "https://lumen.tistory.com/9")
+        self.assertEqual(post.call_args.args[0], "https://www.tistory.com/apis/post/write")
+        self.assertEqual(post.call_args.kwargs["data"]["blogName"], "lumen")
+        self.assertEqual(post.call_args.kwargs["data"]["visibility"], "3")
+
+    def test_blogger_refreshes_token_then_writes(self):
+        settings.blogger_blog_id = "123"
+        settings.google_client_id = "cid"
+        settings.google_client_secret = "sec"
+        settings.google_refresh_token = "refresh"
+        settings.blogger_access_token = ""
+        token_response = MagicMock()
+        token_response.status_code = 200
+        token_response.json.return_value = {"access_token": "ya29"}
+        write_response = MagicMock()
+        write_response.status_code = 200
+        write_response.json.return_value = {"id": "p1", "url": "https://www.blogger.com/p1"}
+
+        def fake_post(url, **kwargs):
+            if "oauth2.googleapis.com" in url:
+                return token_response
+            return write_response
+
+        with patch("autopost_api.services.publishers.blogger_publisher.httpx.post", side_effect=fake_post) as post:
+            result = BloggerPublisher().publish(_Post())
+        self.assertEqual(result["channel"], "blogger")
+        self.assertEqual(result["url"], "https://www.blogger.com/p1")
+        write_call = post.call_args_list[1]
+        self.assertIn("/blogs/123/posts", write_call.args[0])
+        self.assertEqual(write_call.kwargs["headers"]["Authorization"], "Bearer ya29")
+
+
+if __name__ == "__main__":
+    unittest.main()

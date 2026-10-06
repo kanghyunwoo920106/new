@@ -104,7 +104,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => request<{ status: string; mock_claude: boolean; database: string; scheduler: string }>("/health"),
+  health: () =>
+    request<{
+      status: string;
+      mock_claude: boolean;
+      database: string;
+      scheduler: string;
+      configured_channels?: string[];
+    }>("/health"),
   categories: () => request<Category[]>("/api/v1/categories"),
   recommendTopics: (category_id: string) =>
     request<{ batch_recommend_id: string; mock_claude: boolean; topics: Topic[] }>(

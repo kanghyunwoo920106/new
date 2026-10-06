@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
+const CHANNELS = [
+  { code: "site", label: "자체 사이트" },
+  { code: "tistory", label: "티스토리" },
+  { code: "blogger", label: "구글 블로거" },
+] as const;
+
 const INTERVALS = [
   { code: "4h", label: "4시간" },
   { code: "12h", label: "12시간" },
@@ -69,6 +75,8 @@ export default function GeneratePage() {
   const [publishMode, setPublishMode] = useState<"immediate" | "scheduled">("immediate");
   const [firstPublishAt, setFirstPublishAt] = useState("");
   const [intervals, setIntervals] = useState<Set<string>>(new Set(["4h", "24h"]));
+  const [channels, setChannels] = useState<Set<string>>(new Set(["site"]));
+  const [readyChannels, setReadyChannels] = useState<string[]>(["site"]);
   const [loading, setLoading] = useState("");
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
@@ -82,6 +90,7 @@ export default function GeneratePage() {
         if (rows[0]) setCategoryId(rows[0].id);
         setMockClaude(h.mock_claude);
         setScheduler(h.scheduler);
+        if (h.configured_channels?.length) setReadyChannels(h.configured_channels);
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : "API unreachable"))
       .finally(() => setBooting(false));
@@ -136,6 +145,15 @@ export default function GeneratePage() {
     });
   }
 
+  function toggleChannel(code: string) {
+    setChannels((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+
   function toggleInterval(code: string) {
     setIntervals((prev) => {
       const next = new Set(prev);
@@ -149,6 +167,15 @@ export default function GeneratePage() {
     setError("");
     if (selected.size === 0) {
       setError("주제를 하나 이상 선택하세요.");
+      return;
+    }
+    if (channels.size === 0) {
+      setError("발행할 곳을 하나 이상 선택하세요.");
+      return;
+    }
+    const unconfigured = Array.from(channels).filter((code) => !readyChannels.includes(code));
+    if (unconfigured.length > 0) {
+      setError(`${unconfigured.join(", ")} 토큰이 .env에 없습니다. 저장한 뒤 API를 다시 시작하세요.`);
       return;
     }
     if (publishMode === "scheduled") {
@@ -171,7 +198,7 @@ export default function GeneratePage() {
           publishMode === "scheduled" ? new Date(firstPublishAt).toISOString() : null,
         interval_codes: Array.from(intervals),
         interval_mode: "sequential_cycle" as const,
-        channels: ["site"],
+        channels: Array.from(channels),
       };
       const created = await api.createBatch(body);
       setBatch(created);
@@ -316,8 +343,20 @@ export default function GeneratePage() {
       <section className="rounded-md border border-[var(--brand-line)] bg-white/85 p-5">
         <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">3. 발행 방식</h2>
         <p className="mt-1 text-sm text-[var(--brand-ink-soft)]">
-          자체 사이트만. 예약은 sequential_cycle — 간격 목록을 정렬한 뒤 순차 누적합니다.
+          자체 사이트, 티스토리, 구글 블로거에 발행할 수 있습니다. 외부 채널은 .env 토큰이 있을 때만 켜집니다.
         </p>
+        <div className="mt-4 flex flex-wrap gap-4">
+          {CHANNELS.map((ch) => {
+            const ready = readyChannels.includes(ch.code);
+            return (
+              <label key={ch.code} className="flex items-center gap-2 text-sm">
+                <Checkbox checked={channels.has(ch.code)} onCheckedChange={() => toggleChannel(ch.code)} />
+                {ch.label}
+                {ready ? null : <span className="text-xs text-[var(--brand-ink-soft)]">토큰 없음</span>}
+              </label>
+            );
+          })}
+        </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button
             variant={publishMode === "immediate" ? "default" : "outline"}

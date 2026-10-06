@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from autopost_api.channels import ALLOWED_CHANNELS
 from autopost_api.db.models import Batch, BatchItem, Post, PostSeoTag, PublishJob, TopicSuggestion
 from autopost_api.services.content_generator import ContentGenerationService
 from autopost_api.services.quality_reviewer import review_generated_post, should_review
@@ -79,7 +80,6 @@ def process_batch(db: Session, batch_id: str) -> Batch:
         ready_posts.append(post)
         db.commit()
 
-    # Schedule publish jobs (site channel only in Phase 1)
     now = datetime.now(timezone.utc)
     if batch.publish_mode == "immediate":
         times = [now for _ in ready_posts]
@@ -93,9 +93,10 @@ def process_batch(db: Session, batch_id: str) -> Batch:
             mode=batch.interval_mode or "sequential_cycle",
         )
 
-    channels = [c for c in (batch.channels or ["site"]) if c == "site"]
+    channels = [c for c in (batch.channels or ["site"]) if c in ALLOWED_CHANNELS]
     if not channels:
         channels = ["site"]
+    channels = sorted(channels, key=lambda code: 0 if code == "site" else 1)
 
     for idx, post in enumerate(ready_posts):
         run_at = times[idx]

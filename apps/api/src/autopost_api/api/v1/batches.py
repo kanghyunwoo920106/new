@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from autopost_api.api.schemas import BatchCreateRequest, BatchItemOut, BatchOut
 from autopost_api.categories_allowlist import is_blocked_category_name
+from autopost_api.channels import ALLOWED_CHANNELS
+from autopost_api.config import settings
 from autopost_api.db.models import Batch, BatchItem, Category, TopicSuggestion, User
 from autopost_api.db.seed import OPERATOR_EMAIL
 from autopost_api.db.session import get_db
@@ -57,10 +59,16 @@ def create_batch(
     if category is None or not category.is_active or is_blocked_category_name(category.name):
         raise HTTPException(status_code=400, detail="Invalid or blocked category")
 
-    # Phase 1: own-site only
-    channels = [c for c in req.channels if c == "site"] or ["site"]
-    if any(c != "site" for c in req.channels):
-        raise HTTPException(status_code=400, detail="Phase 1 supports channel 'site' only")
+    unknown = [c for c in req.channels if c not in ALLOWED_CHANNELS]
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 채널: {', '.join(unknown)}")
+    channels = list(dict.fromkeys(req.channels)) or ["site"]
+    missing = [c for c in channels if not settings.channel_configured(c)]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"채널 토큰이 없습니다: {', '.join(missing)}. .env를 채운 뒤 API를 다시 시작하세요.",
+        )
 
     if req.publish_mode == "scheduled":
         if req.first_publish_at is None:

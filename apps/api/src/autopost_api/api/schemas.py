@@ -121,3 +121,4 @@ class HealthOut(BaseModel):
     mock_claude: bool
     database: str
     scheduler: str
+    configured_channels: list[str] = Field(default_factory=lambda: ["site"])
