@@ -24,6 +24,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
@@ -64,4 +67,11 @@ jobs:
             exit 0
           fi
           git commit -m "Add paste HTML for the latest Blogger post."
-          git push
+          for _ in 1 2 3; do
+            git fetch origin master
+            git rebase origin/master
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+          done
+          exit 1
