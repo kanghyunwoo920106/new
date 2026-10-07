@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 
 const CHANNELS = [
   { code: "site", label: "자체 사이트" },
-  { code: "tistory", label: "티스토리" },
   { code: "blogger", label: "구글 블로거" },
 ] as const;
 
@@ -343,7 +342,8 @@ export default function GeneratePage() {
       <section className="rounded-md border border-[var(--brand-line)] bg-white/85 p-5">
         <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-tight">3. 발행 방식</h2>
         <p className="mt-1 text-sm text-[var(--brand-ink-soft)]">
-          자체 사이트, 티스토리, 구글 블로거에 발행할 수 있습니다. 외부 채널은 .env 토큰이 있을 때만 켜집니다.
+          자체 사이트와 구글 블로거에 발행할 수 있습니다. 블로거는 .env 토큰이 있을 때만 켜집니다.
+          티스토리는 공식 글쓰기 API가 2024년 2월에 종료되어 자동 발행할 수 없습니다.
         </p>
         <div className="mt-4 flex flex-wrap gap-4">
           {CHANNELS.map((ch) => {

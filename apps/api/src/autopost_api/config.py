@@ -64,7 +64,8 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8471
 
-    # Tistory Open API — https://tistory.github.io/document-tistory-apis/
+    # Tistory Open API write ended February 2024 (https://notice.tistory.com/2664).
+    # New tokens cannot be issued. These fields stay empty and never enable the channel.
     tistory_access_token: str = ""
     tistory_blog_name: str = ""
 
@@ -143,7 +144,7 @@ class Settings(BaseSettings):
         if code == "site":
             return True
         if code == "tistory":
-            return bool(self.tistory_access_token.strip() and self.tistory_blog_name.strip())
+            return False
         if code == "blogger":
             has_blog = bool(self.blogger_blog_id.strip())
             has_refresh = bool(
