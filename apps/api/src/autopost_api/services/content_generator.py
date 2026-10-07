@@ -42,13 +42,6 @@ class ContentGenerationService:
             char_count = count_content_chars(body_md)
 
         body_html = process_blog_html(body_md)
-        category_name = str(getattr(category, "name", "") or "").strip()
-        if category_name and f">{category_name}<" not in body_html:
-            chip = (
-                f'<p style="margin:0 0 1.4em; font-size:14px; line-height:1.4; letter-spacing:0.06em; '
-                f'color:#1f8a72; font-weight:700;">{category_name}</p>'
-            )
-            body_html = body_html.replace(">", ">" + chip, 1)
         title = data.get("title") or topic.title
         # ASCII slugs avoid Next.js / proxy double-encoding issues with Hangul paths.
         base_slug = slugify(title, allow_unicode=False) or "post"
