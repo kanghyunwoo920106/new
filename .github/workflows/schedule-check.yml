@@ -1,11 +1,10 @@
 name: Schedule check
 
 # Confirms GitHub creates a schedule run. This job does not publish a post.
-# 06:58 and 07:08 UTC are 15:58 and 16:08 KST.
+# 09:05 UTC is 18:05 KST, just before the 18:11 post attempt.
 on:
   schedule:
-    - cron: "58 6 * * *"
-    - cron: "8 7 * * *"
+    - cron: "5 9 * * *"
   workflow_dispatch:
 
 jobs:
