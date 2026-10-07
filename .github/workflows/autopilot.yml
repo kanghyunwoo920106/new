@@ -1,13 +1,15 @@
 name: Blogger autopost
 
-# GitHub cron is UTC. These four lines are 09:00, 12:00, 15:00, and 18:00 in Asia/Seoul.
-# Hosted runners stay up when a laptop is off. Each run publishes one post.
+# GitHub cron is UTC, and it often drops jobs scheduled at minute 0.
+# Each Seoul slot therefore gets two automatic attempts: :08 and :38.
+# 00:08/00:38 UTC = 09:08/09:38 KST, then 12:08/12:38, 15:08/15:38, 18:08/18:38.
+# The publisher skips the second attempt when a live post is under 2 hours old.
 on:
   schedule:
-    - cron: "0 0 * * *"
-    - cron: "0 3 * * *"
-    - cron: "0 6 * * *"
-    - cron: "0 9 * * *"
+    - cron: "8,38 0 * * *"
+    - cron: "8,38 3 * * *"
+    - cron: "8,38 6 * * *"
+    - cron: "8,38 9 * * *"
   workflow_dispatch:
 
 jobs:

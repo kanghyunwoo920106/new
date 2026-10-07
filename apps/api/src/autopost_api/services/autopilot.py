@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import random
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
@@ -15,6 +16,28 @@ from autopost_api.integrations.claude_client import recommend_topics
 from autopost_api.workers.enqueue import enqueue_batch
 
 logger = logging.getLogger("autopost.autopilot")
+
+
+# Slots are 3 hours apart. A second attempt inside one slot must not publish again.
+RECENT_POST_WINDOW = timedelta(hours=2)
+
+
+def published_recently(published_at: datetime | None, *, now: datetime, within: timedelta) -> bool:
+    if published_at is None:
+        return False
+    if published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=timezone.utc)
+    return now - published_at.astimezone(timezone.utc) < within
+
+
+def blogger_posted_recently(within: timedelta = RECENT_POST_WINDOW) -> bool:
+    """True when this Blogger slot already has a live post."""
+    if "blogger" not in autopilot_channels():
+        return False
+    from autopost_api.services.publishers.blogger_publisher import BloggerPublisher
+
+    published_at = BloggerPublisher().latest_published_at()
+    return published_recently(published_at, now=datetime.now(timezone.utc), within=within)
 
 
 def autopilot_channels() -> list[str]:
@@ -141,6 +164,13 @@ def main() -> None:
         seed_if_empty(db)
     finally:
         db.close()
+
+    try:
+        if blogger_posted_recently():
+            print("already-posted")
+            return
+    except Exception:
+        logger.exception("recent Blogger post check failed; continuing")
 
     result = run_autopilot()
     print(result)

@@ -70,3 +70,28 @@ class BloggerPublisher:
                 raise RuntimeError("구글 토큰 응답에 access_token이 없습니다.")
             return token
         return settings.blogger_access_token.strip()
+
+    def latest_published_at(self) -> datetime | None:
+        """Published time of the newest live post, if the blog has one."""
+        if not settings.channel_configured("blogger"):
+            return None
+        token = self._access_token()
+        url = f"https://www.googleapis.com/blogger/v3/blogs/{settings.blogger_blog_id.strip()}/posts"
+        response = httpx.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            params={"maxResults": 1, "fetchBodies": "false", "status": "live"},
+            timeout=30,
+        )
+        if response.status_code >= 400:
+            raise RuntimeError(f"구글 블로거 글 목록 조회 실패: {response.text[:500]}")
+        items = response.json().get("items") or []
+        if not items:
+            return None
+        raw = str(items[0].get("published") or "")
+        if not raw:
+            return None
+        published = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        return published.astimezone(timezone.utc)

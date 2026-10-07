@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from autopost_api.config import settings
@@ -32,12 +33,27 @@ class AutopilotScheduleTests(unittest.TestCase):
         self.assertEqual(settings.autopilot_clock_times(), [(9, 0), (15, 0), (18, 0)])
 
 
+class RecentPostTests(unittest.TestCase):
+    def test_post_inside_the_slot_counts_as_recent(self):
+        now = datetime(2026, 10, 7, 3, 38, tzinfo=timezone.utc)
+        published = now - timedelta(minutes=30)
+        self.assertTrue(autopilot.published_recently(published, now=now, within=timedelta(hours=2)))
+
+    def test_post_from_the_previous_slot_does_not_block(self):
+        now = datetime(2026, 10, 7, 6, 8, tzinfo=timezone.utc)
+        published = now - timedelta(hours=3)
+        self.assertFalse(autopilot.published_recently(published, now=now, within=timedelta(hours=2)))
+
+
 class AutopilotCliTests(unittest.TestCase):
     def setUp(self):
         self._scheduler_backend = settings.scheduler_backend
         settings.scheduler_backend = "apscheduler"
+        self._recent = patch.object(autopilot, "blogger_posted_recently", return_value=False)
+        self._recent.start()
 
     def tearDown(self):
+        self._recent.stop()
         settings.scheduler_backend = self._scheduler_backend
 
     def test_wait_inline_finishes_submitted_work(self):
@@ -105,6 +121,20 @@ class AutopilotCliTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as raised:
                 autopilot.main()
         self.assertEqual(raised.exception.code, 1)
+
+    def test_main_skips_when_this_slot_already_has_a_post(self):
+        self._recent.stop()
+        with (
+            patch("autopost_api.db.models.Base"),
+            patch("autopost_api.db.seed.seed_if_empty"),
+            patch("autopost_api.db.session.SessionLocal", return_value=MagicMock()),
+            patch("autopost_api.db.session.engine"),
+            patch.object(autopilot, "blogger_posted_recently", return_value=True),
+            patch.object(autopilot, "run_autopilot") as run_autopilot,
+        ):
+            autopilot.main()
+        run_autopilot.assert_not_called()
+        self._recent.start()
 
 
 if __name__ == "__main__":

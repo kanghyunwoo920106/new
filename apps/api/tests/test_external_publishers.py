@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from autopost_api.config import settings
@@ -76,6 +77,26 @@ class ExternalPublisherTests(unittest.TestCase):
         write_call = post.call_args_list[1]
         self.assertIn("/blogs/123/posts", write_call.args[0])
         self.assertEqual(write_call.kwargs["headers"]["Authorization"], "Bearer ya29")
+
+    def test_blogger_reads_latest_published_time(self):
+        settings.blogger_blog_id = "123"
+        settings.google_client_id = "cid"
+        settings.google_client_secret = "sec"
+        settings.google_refresh_token = "refresh"
+        token_response = MagicMock()
+        token_response.status_code = 200
+        token_response.json.return_value = {"access_token": "ya29"}
+        list_response = MagicMock()
+        list_response.status_code = 200
+        list_response.json.return_value = {"items": [{"published": "2026-10-07T12:08:00+09:00"}]}
+
+        with (
+            patch("autopost_api.services.publishers.blogger_publisher.httpx.post", return_value=token_response),
+            patch("autopost_api.services.publishers.blogger_publisher.httpx.get", return_value=list_response) as get,
+        ):
+            published = BloggerPublisher().latest_published_at()
+        self.assertEqual(published, datetime(2026, 10, 7, 3, 8, tzinfo=timezone.utc))
+        self.assertIn("/blogs/123/posts", get.call_args.args[0])
 
 
 if __name__ == "__main__":
