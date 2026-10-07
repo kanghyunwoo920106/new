@@ -1,0 +1,17 @@
+name: Schedule check
+
+# Confirms GitHub creates a schedule run. This job does not publish a post.
+# 06:58 and 07:08 UTC are 15:58 and 16:08 KST.
+on:
+  schedule:
+    - cron: "58 6 * * *"
+    - cron: "8 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Record that the schedule fired
+        run: date -u
