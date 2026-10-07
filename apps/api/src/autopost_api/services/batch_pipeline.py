@@ -69,9 +69,12 @@ def process_batch(db: Session, batch_id: str) -> Batch:
         )
         db.add(post)
         db.flush()
+        category_label = str(category.name or "").strip()[:80]
+        if category_label:
+            db.add(PostSeoTag(post_id=post.id, tag=category_label, tag_type="category"))
         for tag in result["seo_tags"]:
             tag_text = str(tag).strip()[:80]
-            if tag_text:
+            if tag_text and tag_text != category_label:
                 db.add(PostSeoTag(post_id=post.id, tag=tag_text, tag_type="keyword"))
 
         item.post_id = post.id

@@ -77,6 +77,21 @@ class ExternalPublisherTests(unittest.TestCase):
         write_call = post.call_args_list[1]
         self.assertIn("/blogs/123/posts", write_call.args[0])
         self.assertEqual(write_call.kwargs["headers"]["Authorization"], "Bearer ya29")
+        self.assertEqual(write_call.kwargs["json"]["labels"], ["정리"])
+
+    def test_blogger_uses_the_topic_name_as_the_only_label(self):
+        settings.blogger_blog_id = "123"
+        settings.blogger_access_token = "token"
+        settings.google_client_id = ""
+        post = _Post()
+        post.category = type("Category", (), {"name": "음식·요리"})()
+        post.seo_tags = [_Tag("집밥"), type("CategoryTag", (), {"tag": "음식·요리", "tag_type": "category"})()]
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"id": "p1", "url": "https://www.blogger.com/p1"}
+        with patch("autopost_api.services.publishers.blogger_publisher.httpx.post", return_value=response) as post_call:
+            BloggerPublisher().publish(post)
+        self.assertEqual(post_call.call_args.kwargs["json"]["labels"], ["음식·요리"])
 
     def test_blogger_reads_latest_published_time(self):
         settings.blogger_blog_id = "123"
