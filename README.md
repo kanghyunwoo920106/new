@@ -118,6 +118,6 @@ docker-compose.host.yml   Host-network fallback for restricted Linux VMs
 
 - 발행 채널: 자체 사이트, 티스토리, 구글 블로거. 토큰은 `.env`에만 둡니다. 네이버 블로그 자동 발행은 없습니다.
 - GitHub Actions가 한국 시간 오전 9시, 낮 12시, 오후 3시, 오후 6시 구간에 블로거로 글을 한 편씩 발행합니다. 정각 예약은 GitHub가 건너뛰는 경우가 있어, 각 구간에서 8분과 38분에 자동으로 다시 시도합니다. 앞선 시도가 이미 글을 올렸으면 뒤 시도는 넘어갑니다. 워크플로는 저장소 기본 브랜치의 `.github/workflows/autopilot.yml`이며, 키는 Actions 시크릿에만 둡니다.
-- 블로거에 올린 HTML은 `paste/`에도 저장됩니다. 티스토리는 HTML 모드에 붙여넣고, 네이버는 사진과 꾸미기가 빠질 수 있습니다. 이후 발행분은 Actions 실행의 `paste-html` 파일에서도 받을 수 있습니다.  
+- 블로거에 올린 HTML은 `paste/`에도 저장됩니다. 티스토리는 HTML 모드에 붙여넣고, 네이버는 사진과 꾸미기가 빠질 수 있습니다. 이후 발행분도 `paste/`에 추가되고, Actions 실행의 `paste-html` 파일로도 남습니다.  
 - AdSense: placeholder slots only.  
 - Cloud agent `127.0.0.1` is not your laptop — use a published public URL or Try Live for the agent VM.
