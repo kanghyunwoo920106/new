@@ -41,3 +41,10 @@ jobs:
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
           REFERENCE_LINKS: ${{ secrets.REFERENCE_LINKS }}
         run: uv run python -m autopost_api.services.autopilot
+      - name: Upload paste HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paste-html
+          path: paste/*.html
+          if-no-files-found: ignore

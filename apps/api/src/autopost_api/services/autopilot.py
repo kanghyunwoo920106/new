@@ -231,6 +231,13 @@ def main(argv: list[str] | None = None) -> None:
             summary = ",".join(f"{job.channel_code}:{job.status}" for job in jobs) or "none"
             print(f"publish_jobs={summary}")
             raise SystemExit(1)
+        try:
+            from autopost_api.services.paste_export import export_batch_html
+
+            for path in export_batch_html(db, batch):
+                print(f"paste={path}")
+        except Exception:
+            logger.exception("paste html export failed")
     finally:
         db.close()
 
