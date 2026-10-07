@@ -1,7 +1,7 @@
 name: Blogger autopost
 
-# GitHub cron is UTC. Minute 0 and a single combined list were not creating runs.
-# Each Seoul slot gets two separate schedules: :11 and :41.
+# GitHub cron is UTC and only runs from the default branch.
+# Each Seoul slot is registered on its own so a dropped minute still has a retry.
 # 00:11/00:41 UTC = 09:11/09:41 KST, then 12:11/12:41, 15:11/15:41, 18:11/18:41.
 # The publisher skips the second attempt when a live post is under 2 hours old.
 on:
@@ -59,6 +59,7 @@ jobs:
           if-no-files-found: ignore
       - name: Commit new paste HTML
         if: success()
+        continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -69,9 +70,13 @@ jobs:
           git commit -m "Add paste HTML for the latest Blogger post."
           for _ in 1 2 3; do
             git fetch origin master
-            git rebase origin/master
+            if ! git rebase origin/master; then
+              git rebase --abort || true
+              continue
+            fi
             if git push origin HEAD:master; then
               exit 0
             fi
           done
+          echo "Paste HTML was uploaded as an artifact. The blog post is already published."
           exit 1
