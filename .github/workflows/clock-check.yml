@@ -2,6 +2,7 @@ name: Schedule check
 
 # Confirms GitHub creates a schedule run. This job does not publish a post.
 # These three times run only on 7 October, shortly after this file is added.
+# A follow-up commit asks GitHub to resync the schedule list.
 on:
   schedule:
     - cron: "58 13 7 10 *"
