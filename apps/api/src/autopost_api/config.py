@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     autopilot_hour: int = 9
     autopilot_minute: int = 0
     autopilot_channels: str = "blogger"
+    # Scheduled retries skip a slot that already has a live post. A manual run can ignore that.
+    autopilot_ignore_recent: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

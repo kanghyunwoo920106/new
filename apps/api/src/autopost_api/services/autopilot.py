@@ -166,7 +166,7 @@ def main() -> None:
         db.close()
 
     try:
-        if blogger_posted_recently():
+        if not settings.autopilot_ignore_recent and blogger_posted_recently():
             print("already-posted")
             return
     except Exception:

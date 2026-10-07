@@ -21,9 +21,11 @@ POST_SCHEMA_HINT = """
   "title": "...",
   "excerpt": "...",
   "body_markdown": "...",
+  "image_queries": [{"query": "english photo keywords", "caption": "한글 캡션"}],
   "seo_tags": ["..."],
   "meta_description": "..."
 }
+image_queries는 2개. query는 영어 사진 검색어.
 """
 
 REVIEW_SCHEMA_HINT = """
@@ -210,9 +212,13 @@ def generate_deep_post(
     logger.info("Claude live: generate_deep_post model=%s", settings.claude_model_generate)
 
     system = (
-        "당신은 AdSense 친화적 한국어 전문 블로그 작가입니다. "
-        "사실에 기반한 심층 설명, 소제목(H2/H3), 요약, FAQ를 포함합니다. "
-        "저작권 침해·의료/금융 단정 조언·자극적 허위정보를 피합니다. "
+        "당신은 사람이 쓴 것처럼 읽히는 한국어 블로그 작가입니다. "
+        "문단은 2~4문장으로 짧게 끊고, 소제목(H2/H3)과 목록으로 숨 쉴 자리를 만드세요. "
+        "이모지는 소제목과 핵심 문장에만 3~6개 넣고, 매 문장마다 넣지 마세요. "
+        "본문 사이사이에 사진 자리를 2~3개 넣으세요. 각 자리는 한 줄로 "
+        "[[image: english photo keywords | 한글 캡션]] 형식입니다. "
+        "영어 검색어는 장면이 보이게 구체적으로 적고, 저작권이 있는 특정 작품·로고는 쓰지 마세요. "
+        "의료·금융·법률을 단정하지 마세요. "
         f"본문(body_markdown)은 공백 제외 {min_chars}자 이상을 목표로 합니다.\n"
         + POST_SCHEMA_HINT
     )
@@ -221,7 +227,8 @@ def generate_deep_post(
         "angle": angle,
         "keywords": keywords,
         "category": category_name,
-        "structure": ["도입", "핵심개념", "실전팁", "주의점", "FAQ", "결론"],
+        "structure": ["가벼운 도입", "핵심 장면", "따라 하는 순서", "놓치기 쉬운 점", "FAQ", "짧은 마무리"],
+        "tone": "친구에게 설명하듯 다정하고 구체적으로. 보고서처럼 딱딱하게 쓰지 말 것.",
     }
     msg = _client().messages.create(
         model=settings.claude_model_generate,
@@ -245,7 +252,8 @@ def review_post_sample(*, title: str, excerpt: str, body_markdown: str, seo_tags
     logger.info("Claude live: review_post_sample model=%s", settings.claude_model_review)
 
     system = (
-        "당신은 SEO·품질 검수 편집자입니다. 저품질·키워드 스터핑·민감 주제 여부를 평가하세요.\n"
+        "당신은 SEO·품질 검수 편집자입니다. 저품질·키워드 스터핑·민감 주제 여부를 평가하세요. "
+        "짧은 문단, 소량의 이모지, 사진 자리 표시([[image: ...]])는 가독성을 위한 정상 요소입니다.\n"
         + REVIEW_SCHEMA_HINT
     )
     user = {

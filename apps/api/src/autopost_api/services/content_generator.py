@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import markdown as md
 from slugify import slugify
 
 from autopost_api.config import settings
 from autopost_api.integrations.claude_client import generate_deep_post
+from autopost_api.services.post_layout import ensure_image_markers, render_readable_html
 
 
 def count_content_chars(text: str) -> int:
@@ -39,7 +39,8 @@ class ContentGenerationService:
             body_md = data["body_markdown"]
             char_count = count_content_chars(body_md)
 
-        body_html = md.markdown(body_md, extensions=["extra", "sane_lists", "toc"])
+        body_md = ensure_image_markers(body_md, data.get("image_queries"))
+        body_html = render_readable_html(body_md)
         title = data.get("title") or topic.title
         # ASCII slugs avoid Next.js / proxy double-encoding issues with Hangul paths.
         base_slug = slugify(title, allow_unicode=False) or "post"
