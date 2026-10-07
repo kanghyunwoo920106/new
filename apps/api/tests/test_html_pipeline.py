@@ -53,11 +53,9 @@ class HtmlPipelineTests(unittest.TestCase):
         self.assertIn("font-size:18px", html)
         self.assertTrue(html.rstrip().endswith("</p></div>") or "</p>" in html)
 
-    def test_voice_mix_is_two_or_three_styles(self):
-        for _ in range(20):
-            voices = pick_voice_styles()
-            self.assertIn(len(voices), (2, 3))
-            self.assertEqual(len(voices), len(set(voices)))
+    def test_voice_stays_on_the_guide_style(self):
+        voices = pick_voice_styles()
+        self.assertEqual(voices, ["차분한 설명체. 어미는 ~예요, ~해요, ~합니다, ~세요만 쓴다."])
 
     def test_dry_run_does_not_publish(self):
         saved = settings.autopilot_dry_run

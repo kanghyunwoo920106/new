@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import random
 import re
 import time
 from typing import Any
@@ -19,15 +18,13 @@ topics 길이 정확히 10.
 HUMAN_BLOGGER_SYSTEM = """너는 실제로 블로그를 오래 운영해온 평범한 사람이야. 전문 작가도, AI도 아니야.
 주어진 주제로 블로그 포스팅을 HTML로 작성해줘.
 
-[문체 규칙]
-- 매 글마다 아래 스타일 중 2~3개를 골라 섞어서 써:
-  (a) 차분하게 설명해주는 말투 ("~예요", "~합니다")
-  (b) 친구한테 말하듯 편한 반말 ("~거든", "~더라고", "진짜 괜찮았음")
-  (c) 직접 겪은 듯한 후기 말투 ("솔직히 처음엔 별로일 줄 알았는데...")
-- 한 글 안에서도 문단마다 톤이 살짝 바뀌어도 좋아. 사람이 쓰다 보면 그렇잖아.
-- 문장 길이를 일정하게 쓰지 마. 긴 문장 뒤에 짧은 한마디. ("근데 이게 포인트.")
-- 혼잣말, 감탄, 독자에게 건네는 질문을 가끔 넣어. ("이거 은근 모르는 사람 많음")
-- 가끔은 완벽하지 않은 표현, 구어체를 써도 돼.
+[문체]
+- 여행 가이드를 차근차근 설명하는 말투만 쓴다. 기준은 "베트남 호이안·냐짱" 글이다.
+- 어미는 ~예요, ~해요, ~하죠, ~합니다, ~입니다, ~세요, ~면 돼요 만 쓴다.
+- 독자에게 시간을 안내하듯 쓴다. 기간, 시각, 가격, 이동 시간처럼 구체적인 숫자를 넣는다.
+- 반말로 바꾸지 마. ~거든, ~더라고, ~했음, ~해봤어, ~거야, ~지 마, "진짜 괜찮았음" 은 쓰지 마.
+- "솔직히", "오히려", "차라리" 는 써도 된다. 문장 끝은 항상 해요체나 합니다체로 맺는다.
+- 문단마다 말투를 갈아타지 마. 글 전체가 같은 설명체다.
 
 [절대 쓰지 말 것 - AI 티 나는 표현]
 - "결론적으로", "요약하자면", "이번 포스팅에서는 ~에 대해 알아보겠습니다"
@@ -42,7 +39,7 @@ HUMAN_BLOGGER_SYSTEM = """너는 실제로 블로그를 오래 운영해온 평�
 - 마무리: 거창한 요약 말고 가볍게 한마디 + 독자에게 말 걸기
 
 [이모지]
-- 문단당 0~2개, 어울리는 곳에만. 소제목에 가끔 사용 가능.
+- 소제목에 하나 정도. 본문 문단에는 거의 넣지 마.
 
 [이미지/링크/지도 플레이스홀더]
 - 본문 중간 적당한 위치에 [IMAGE: 영어 검색 키워드] 를 3~5개 넣어.
@@ -58,11 +55,7 @@ HUMAN_BLOGGER_SYSTEM = """너는 실제로 블로그를 오래 운영해온 평�
 - 코드블록(```)으로 감싸지 마.
 """
 
-VOICE_STYLES = (
-    '(a) 차분하게 설명해주는 말투 ("~예요", "~합니다")',
-    '(b) 친구한테 말하듯 편한 반말 ("~거든", "~더라고", "진짜 괜찮았음")',
-    '(c) 직접 겪은 듯한 후기 말투 ("솔직히 처음엔 별로일 줄 알았는데...")',
-)
+GUIDE_VOICE = "차분한 설명체. 어미는 ~예요, ~해요, ~합니다, ~세요만 쓴다."
 
 REVIEW_SCHEMA_HINT = """
 반드시 JSON만 출력:
@@ -233,9 +226,8 @@ def recommend_topics(category_name: str, description: str, recent_titles: list[s
 
 
 def pick_voice_styles() -> list[str]:
-    """Choose 2 or 3 voices so consecutive posts do not sound the same."""
-    count = random.choice((2, 3))
-    return random.sample(list(VOICE_STYLES), k=count)
+    """The Hoi An guide voice. Every post uses this, not a random mix."""
+    return [GUIDE_VOICE]
 
 
 def _coerce_model_html(text: str) -> str:
@@ -300,7 +292,7 @@ def generate_deep_post(
         "category": category_name,
         "voices_for_this_post": voices,
         "min_chars_excluding_spaces": min_chars,
-        "instruction": "이번 글은 voices_for_this_post에 적힌 문체만 섞어 써. HTML 조각만 출력해.",
+        "instruction": "이번 글은 voices_for_this_post의 설명체만 써. 반말로 바꾸지 마. HTML 조각만 출력해.",
     }
     msg = _client().messages.create(
         model=settings.claude_model_generate,
@@ -335,8 +327,8 @@ def review_post_sample(*, title: str, excerpt: str, body_markdown: str, seo_tags
 
     system = (
         "당신은 SEO·품질 검수 편집자입니다. 저품질·키워드 스터핑·민감 주제 여부를 평가하세요. "
-        "짧은 문단, 구어체, 소량의 이모지, [IMAGE:], [LINK:], [MAP:] 자리는 정상 요소입니다. "
-        "사람이 쓴 듯한 말투를 감점하지 마세요.\n"
+        "해요체·합니다체 설명, 소제목 이모지, [IMAGE:], [LINK:], [MAP:] 자리는 정상 요소입니다. "
+        "차분한 안내 말투를 감점하지 마세요.\n"
         + REVIEW_SCHEMA_HINT
     )
     user = {
