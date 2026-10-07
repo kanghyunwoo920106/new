@@ -84,6 +84,15 @@ class Settings(BaseSettings):
     autopilot_channels: str = "blogger"
     # Scheduled retries skip a slot that already has a live post. A manual run can ignore that.
     autopilot_ignore_recent: bool = False
+    autopilot_dry_run: bool = False
+    autopilot_dry_run_path: str = "data/dry-run/latest.html"
+
+    # Stock photos. Either key is enough. Empty keys drop image placeholders.
+    unsplash_access_key: str = ""
+    pexels_api_key: str = ""
+    # Optional web search for [LINK:] placeholders. User list is checked first.
+    brave_search_api_key: str = ""
+    reference_links: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

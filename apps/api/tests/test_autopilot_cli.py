@@ -73,7 +73,7 @@ class AutopilotCliTests(unittest.TestCase):
             patch("autopost_api.workers.scheduler.dispatch_due_jobs") as dispatch,
         ):
             with self.assertRaises(SystemExit) as raised:
-                autopilot.main()
+                autopilot.main([])
         self.assertEqual(raised.exception.code, 1)
         base.metadata.create_all.assert_called_once()
         wait_inline.assert_not_called()
@@ -96,7 +96,7 @@ class AutopilotCliTests(unittest.TestCase):
             patch("autopost_api.workers.enqueue.wait_inline") as wait_inline,
             patch("autopost_api.workers.scheduler.dispatch_due_jobs", return_value=1) as dispatch,
         ):
-            autopilot.main()
+            autopilot.main([])
 
         wait_inline.assert_called_once()
         dispatch.assert_called_once()
@@ -119,7 +119,7 @@ class AutopilotCliTests(unittest.TestCase):
             patch("autopost_api.workers.scheduler.dispatch_due_jobs", return_value=0),
         ):
             with self.assertRaises(SystemExit) as raised:
-                autopilot.main()
+                autopilot.main([])
         self.assertEqual(raised.exception.code, 1)
 
     def test_main_skips_when_this_slot_already_has_a_post(self):
@@ -132,7 +132,7 @@ class AutopilotCliTests(unittest.TestCase):
             patch.object(autopilot, "blogger_posted_recently", return_value=True),
             patch.object(autopilot, "run_autopilot") as run_autopilot,
         ):
-            autopilot.main()
+            autopilot.main([])
         run_autopilot.assert_not_called()
         self._recent.start()
 

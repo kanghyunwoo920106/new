@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -145,13 +146,43 @@ _FAILURES = frozenset(
 )
 
 
-def main() -> None:
+def _apply_cli(argv: list[str]) -> None:
+    if "--dry-run" in argv:
+        settings.autopilot_dry_run = True
+    if "--output" in argv:
+        index = argv.index("--output")
+        if index + 1 >= len(argv):
+            raise SystemExit("dry-run --output 뒤에 파일 경로가 필요합니다.")
+        settings.autopilot_dry_run_path = argv[index + 1]
+
+
+def main(argv: list[str] | None = None) -> None:
     """One-shot entrypoint for an always-on scheduler such as GitHub Actions.
 
     Generates one post, waits until that work finishes, publishes due jobs,
     then exits. A non-zero exit means nothing was published.
+    `--dry-run` writes HTML and does not publish.
     """
     logging.basicConfig(level=logging.INFO)
+    _apply_cli(sys.argv[1:] if argv is None else argv)
+    if settings.autopilot_dry_run:
+        from autopost_api.db.models import Base
+        from autopost_api.db.seed import seed_if_empty
+        from autopost_api.db.session import SessionLocal, engine
+        from autopost_api.services.dry_run import run_dry_run
+
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            seed_if_empty(db)
+        finally:
+            db.close()
+        try:
+            print(run_dry_run())
+        except Exception:
+            logger.exception("dry-run failed")
+            raise SystemExit(1) from None
+        return
     from autopost_api.db.models import Base, PublishJob
     from autopost_api.db.seed import seed_if_empty
     from autopost_api.db.session import SessionLocal, engine

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 import time
 from typing import Any
@@ -15,18 +16,53 @@ TOPIC_SCHEMA_HINT = """
 topics 길이 정확히 10.
 """
 
-POST_SCHEMA_HINT = """
-반드시 JSON만 출력:
-{
-  "title": "...",
-  "excerpt": "...",
-  "body_markdown": "...",
-  "image_queries": [{"query": "english photo keywords", "caption": "한글 캡션"}],
-  "seo_tags": ["..."],
-  "meta_description": "..."
-}
-image_queries는 2개. query는 영어 사진 검색어.
+HUMAN_BLOGGER_SYSTEM = """너는 실제로 블로그를 오래 운영해온 평범한 사람이야. 전문 작가도, AI도 아니야.
+주어진 주제로 블로그 포스팅을 HTML로 작성해줘.
+
+[문체 규칙]
+- 매 글마다 아래 스타일 중 2~3개를 골라 섞어서 써:
+  (a) 차분하게 설명해주는 말투 ("~예요", "~합니다")
+  (b) 친구한테 말하듯 편한 반말 ("~거든", "~더라고", "진짜 괜찮았음")
+  (c) 직접 겪은 듯한 후기 말투 ("솔직히 처음엔 별로일 줄 알았는데...")
+- 한 글 안에서도 문단마다 톤이 살짝 바뀌어도 좋아. 사람이 쓰다 보면 그렇잖아.
+- 문장 길이를 일정하게 쓰지 마. 긴 문장 뒤에 짧은 한마디. ("근데 이게 포인트.")
+- 혼잣말, 감탄, 독자에게 건네는 질문을 가끔 넣어. ("이거 은근 모르는 사람 많음")
+- 가끔은 완벽하지 않은 표현, 구어체를 써도 돼.
+
+[절대 쓰지 말 것 - AI 티 나는 표현]
+- "결론적으로", "요약하자면", "이번 포스팅에서는 ~에 대해 알아보겠습니다"
+- "~의 중요성", "~라고 할 수 있습니다", "다양한", "효과적인" 남발
+- 모든 문단이 같은 길이/구조인 것, 기계적인 "첫째, 둘째, 셋째"
+- 매 문단 끝마다 이모지 붙이기
+- 과장된 광고 문구
+
+[구성]
+- 도입: 주제를 꺼내게 된 개인적인 계기나 상황 한두 문장 (경험담 느낌)
+- 본문: <h2> 소제목 3~5개, 필요하면 <h3>
+- 마무리: 거창한 요약 말고 가볍게 한마디 + 독자에게 말 걸기
+
+[이모지]
+- 문단당 0~2개, 어울리는 곳에만. 소제목에 가끔 사용 가능.
+
+[이미지/링크/지도 플레이스홀더]
+- 본문 중간 적당한 위치에 [IMAGE: 영어 검색 키워드] 를 3~5개 넣어.
+  첫 번째는 글 맨 앞 대표 이미지로.
+- 참고하면 좋을 공식 사이트/서비스가 있을 때만 [LINK: 앵커텍스트 | 연결할 대상 설명] 사용.
+  URL은 절대 지어내지 마. 확실하지 않으면 링크를 넣지 마.
+- 주제가 특정 장소(맛집, 카페, 여행지, 숙소 등)일 때만 [MAP: 장소명 + 주소 또는 지역] 사용.
+  장소 글이 아니면 넣지 마.
+
+[출력]
+- <html>, <head>, <body> 없이 본문 HTML 조각만 출력.
+- 마크다운 문법(##, **)은 쓰지 말고 HTML 태그만 사용.
+- 코드블록(```)으로 감싸지 마.
 """
+
+VOICE_STYLES = (
+    '(a) 차분하게 설명해주는 말투 ("~예요", "~합니다")',
+    '(b) 친구한테 말하듯 편한 반말 ("~거든", "~더라고", "진짜 괜찮았음")',
+    '(c) 직접 겪은 듯한 후기 말투 ("솔직히 처음엔 별로일 줄 알았는데...")',
+)
 
 REVIEW_SCHEMA_HINT = """
 반드시 JSON만 출력:
@@ -196,6 +232,51 @@ def recommend_topics(category_name: str, description: str, recent_titles: list[s
     return data
 
 
+def pick_voice_styles() -> list[str]:
+    """Choose 2 or 3 voices so consecutive posts do not sound the same."""
+    count = random.choice((2, 3))
+    return random.sample(list(VOICE_STYLES), k=count)
+
+
+def _coerce_model_html(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:html|json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict):
+            return str(data.get("body_html") or data.get("body_markdown") or text)
+    return text.strip()
+
+
+def _mock_html_post(title: str, angle: str, keywords: list[str], category_name: str, min_chars: int) -> dict[str, Any]:
+    data = _mock_post(title, angle, keywords, category_name, min_chars)
+    paragraphs = []
+    for block in data["body_markdown"].split("\n\n"):
+        text = block.strip()
+        if not text:
+            continue
+        if text.startswith("#"):
+            paragraphs.append(f"<h2>{text.lstrip('#').strip()}</h2>")
+        else:
+            paragraphs.append(f"<p>{text}</p>")
+    images = [
+        "[IMAGE: notebook on a wooden desk]",
+        "[IMAGE: hands preparing ingredients on a kitchen counter]",
+        "[IMAGE: city street in soft afternoon light]",
+    ]
+    body = images[0] + "\n" + "\n".join(paragraphs)
+    if len(paragraphs) > 3:
+        body += "\n" + images[1]
+    data["body_markdown"] = body
+    data["excerpt"] = f"{title}을 직접 해 본 이야기다."
+    return data
+
+
 def generate_deep_post(
     *,
     title: str,
@@ -207,40 +288,41 @@ def generate_deep_post(
     if settings.use_mock_claude:
         logger.info("Claude mock: generate_deep_post (set ANTHROPIC_API_KEY for live Haiku)")
         time.sleep(0.15)
-        data = _mock_post(title, angle, keywords, category_name, min_chars)
-        return data, {"mock": True, "model": "mock-haiku"}
+        data = _mock_html_post(title, angle, keywords, category_name, min_chars)
+        return data, {"mock": True, "model": "mock-haiku", "voices": pick_voice_styles()}
     logger.info("Claude live: generate_deep_post model=%s", settings.claude_model_generate)
 
-    system = (
-        "당신은 사람이 쓴 것처럼 읽히는 한국어 블로그 작가입니다. "
-        "문단은 2~4문장으로 짧게 끊고, 소제목(H2/H3)과 목록으로 숨 쉴 자리를 만드세요. "
-        "이모지는 소제목과 핵심 문장에만 3~6개 넣고, 매 문장마다 넣지 마세요. "
-        "본문 사이사이에 사진 자리를 2~3개 넣으세요. 각 자리는 한 줄로 "
-        "[[image: english photo keywords | 한글 캡션]] 형식입니다. "
-        "영어 검색어는 장면이 보이게 구체적으로 적고, 저작권이 있는 특정 작품·로고는 쓰지 마세요. "
-        "의료·금융·법률을 단정하지 마세요. "
-        f"본문(body_markdown)은 공백 제외 {min_chars}자 이상을 목표로 합니다.\n"
-        + POST_SCHEMA_HINT
-    )
+    voices = pick_voice_styles()
     user = {
         "title": title,
         "angle": angle,
         "keywords": keywords,
         "category": category_name,
-        "structure": ["가벼운 도입", "핵심 장면", "따라 하는 순서", "놓치기 쉬운 점", "FAQ", "짧은 마무리"],
-        "tone": "친구에게 설명하듯 다정하고 구체적으로. 보고서처럼 딱딱하게 쓰지 말 것.",
+        "voices_for_this_post": voices,
+        "min_chars_excluding_spaces": min_chars,
+        "instruction": "이번 글은 voices_for_this_post에 적힌 문체만 섞어 써. HTML 조각만 출력해.",
     }
     msg = _client().messages.create(
         model=settings.claude_model_generate,
         max_tokens=8192,
-        system=system,
+        system=HUMAN_BLOGGER_SYSTEM,
         messages=[{"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
     )
-    data = _extract_json(_message_text(msg))
+    body_html = _coerce_model_html(_message_text(msg))
+    plain = re.sub(r"<[^>]+>", " ", body_html)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    data = {
+        "title": title,
+        "excerpt": plain[:180],
+        "body_markdown": body_html,
+        "seo_tags": list(dict.fromkeys([*(keywords or []), category_name]))[:12],
+        "meta_description": plain[:150],
+    }
     meta = {
         "model": settings.claude_model_generate,
         "input_tokens": getattr(msg.usage, "input_tokens", 0),
         "output_tokens": getattr(msg.usage, "output_tokens", 0),
+        "voices": voices,
     }
     return data, meta
 
@@ -253,7 +335,8 @@ def review_post_sample(*, title: str, excerpt: str, body_markdown: str, seo_tags
 
     system = (
         "당신은 SEO·품질 검수 편집자입니다. 저품질·키워드 스터핑·민감 주제 여부를 평가하세요. "
-        "짧은 문단, 소량의 이모지, 사진 자리 표시([[image: ...]])는 가독성을 위한 정상 요소입니다.\n"
+        "짧은 문단, 구어체, 소량의 이모지, [IMAGE:], [LINK:], [MAP:] 자리는 정상 요소입니다. "
+        "사람이 쓴 듯한 말투를 감점하지 마세요.\n"
         + REVIEW_SCHEMA_HINT
     )
     user = {

@@ -7,11 +7,13 @@ from slugify import slugify
 
 from autopost_api.config import settings
 from autopost_api.integrations.claude_client import generate_deep_post
-from autopost_api.services.post_layout import ensure_image_markers, render_readable_html
+from autopost_api.services.html_pipeline import process_blog_html
 
 
 def count_content_chars(text: str) -> int:
-    plain = re.sub(r"[#>*`\[\]()\-_]", "", text)
+    plain = re.sub(r"<[^>]+>", "", text)
+    plain = re.sub(r"\[[A-Za-z]+:[^\]]*\]", "", plain)
+    plain = re.sub(r"[#>*`\[\]()\-_]", "", plain)
     plain = re.sub(r"\s+", "", plain)
     return len(plain)
 
@@ -39,8 +41,7 @@ class ContentGenerationService:
             body_md = data["body_markdown"]
             char_count = count_content_chars(body_md)
 
-        body_md = ensure_image_markers(body_md, data.get("image_queries"))
-        body_html = render_readable_html(body_md)
+        body_html = process_blog_html(body_md)
         title = data.get("title") or topic.title
         # ASCII slugs avoid Next.js / proxy double-encoding issues with Hangul paths.
         base_slug = slugify(title, allow_unicode=False) or "post"

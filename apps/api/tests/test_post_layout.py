@@ -37,8 +37,7 @@ class PostLayoutTests(unittest.TestCase):
         self.assertEqual(body.count("[[image:"), 2)
         self.assertLess(body.index("sunny kitchen"), body.index("## 다음"))
 
-    def test_rare_latin_letter_is_removed_and_emoji_stays(self):
-        html = render_readable_html("중부 
+    def test_missing_image_does_not_leave_a_marker(self):
         html = render_readable_html(
             "짧은 문단입니다.\n\n[[image: missing photo | 없는 사진]]\n\n다음 문단입니다.",
             image_finder=lambda _query: None,
