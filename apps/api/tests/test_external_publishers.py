@@ -85,7 +85,11 @@ class ExternalPublisherTests(unittest.TestCase):
         settings.google_client_id = ""
         post = _Post()
         post.category = type("Category", (), {"name": "음식·요리"})()
-        post.seo_tags = [_Tag("집밥"), type("CategoryTag", (), {"tag": "음식·요리", "tag_type": "category"})()]
+        post.seo_tags = [
+            _Tag("집밥"),
+            type("CategoryTag", (), {"tag": "음식·요리", "tag_type": "category"})(),
+            type("CategoryTag", (), {"tag": "맛집", "tag_type": "category"})(),
+        ]
         response = MagicMock()
         response.status_code = 200
         response.json.return_value = {"id": "p1", "url": "https://www.blogger.com/p1"}

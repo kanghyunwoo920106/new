@@ -12,22 +12,15 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 def blogger_labels(post: Any) -> list[str]:
     """One topic label per post. Keyword tags stay in our database, not on Blogger."""
-    labels: list[str] = []
     category = getattr(post, "category", None)
     category_name = str(getattr(category, "name", "") or "").strip()
     if category_name:
-        labels.append(category_name)
+        return [category_name]
+    labels: list[str] = []
     for tag in post.seo_tags or []:
-        if getattr(tag, "tag_type", "keyword") != "category":
-            continue
         text = str(getattr(tag, "tag", "") or "").strip()
         if text and text not in labels:
             labels.append(text)
-    if not labels:
-        for tag in post.seo_tags or []:
-            text = str(getattr(tag, "tag", "") or "").strip()
-            if text and text not in labels:
-                labels.append(text)
     return labels[:10]
 
 

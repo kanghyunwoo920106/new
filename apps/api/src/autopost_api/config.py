@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     autopilot_hour: int = 9
     autopilot_minute: int = 0
     autopilot_channels: str = "blogger"
+    # Empty picks a random allowlisted category. A name or slug forces that category.
+    autopilot_category: str = ""
     # Scheduled retries skip a slot that already has a live post. A manual run can ignore that.
     autopilot_ignore_recent: bool = False
     autopilot_dry_run: bool = False

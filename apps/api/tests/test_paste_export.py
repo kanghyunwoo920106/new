@@ -19,6 +19,8 @@ class PasteExportTests(unittest.TestCase):
         text = render_paste_document("도시락", "<p>본문</p>", category="음식·요리", url="https://example.blogspot.com/1")
         self.assertIn("제목: 도시락", text)
         self.assertIn("카테고리: 음식·요리", text)
+        self.assertNotIn("블로거:", text)
+        self.assertNotIn("example.blogspot.com", text)
         self.assertIn("<p>본문</p>", text)
         self.assertTrue(text.strip().endswith("</p>"))
 

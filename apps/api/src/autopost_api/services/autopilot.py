@@ -46,6 +46,15 @@ def autopilot_channels() -> list[str]:
     return [code for code in codes if settings.channel_configured(code)]
 
 
+def select_autopilot_category(categories: list, wanted: str = ""):
+    """Pick one category. A name or slug limits the choice; extras are not added later."""
+    name = wanted.strip()
+    if name:
+        matches = [category for category in categories if category.name == name or getattr(category, "slug", "") == name]
+        return random.choice(matches) if matches else None
+    return random.choice(categories) if categories else None
+
+
 def run_autopilot() -> str:
     """Pick a random category and topic, then queue one post."""
     if not settings.autopilot_enabled:
@@ -65,10 +74,10 @@ def run_autopilot() -> str:
             for category in db.scalars(select(Category).where(Category.is_active.is_(True))).all()
             if not is_blocked_category_name(category.name)
         ]
-        if not categories:
+        category = select_autopilot_category(categories, settings.autopilot_category)
+        if category is None:
             logger.warning("autopilot skipped: no active category")
             return "no-category"
-        category = random.choice(categories)
         recent = db.scalars(
             select(Post.title).where(Post.category_id == category.id).order_by(Post.created_at.desc()).limit(50)
         ).all()

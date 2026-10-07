@@ -25,13 +25,10 @@ def paste_filename(title: str, when: datetime | None = None) -> str:
 
 
 def render_paste_document(title: str, body_html: str, *, category: str = "", url: str = "") -> str:
+    del url
     lines = [f"제목: {title.strip() or '글'}"]
     if category.strip():
         lines.append(f"카테고리: {category.strip()}")
-    if url.strip():
-        lines.append(f"블로거: {url.strip()}")
-    lines.append("티스토리: 글쓰기 화면을 HTML로 바꾼 뒤 이 파일 전체를 붙여넣으세요. 주석은 화면에 나오지 않습니다. 제목은 제목 칸에 따로 넣으세요.")
-    lines.append("네이버: 에디터가 사진, 지도, 꾸미기 태그를 빼는 경우가 있습니다. 글은 붙고 사진은 직접 올려야 할 수 있습니다.")
     comment = "<!--\n" + "\n".join(lines) + "\n-->\n"
     return comment + body_html.strip() + "\n"
 

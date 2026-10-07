@@ -33,6 +33,22 @@ class AutopilotScheduleTests(unittest.TestCase):
         self.assertEqual(settings.autopilot_clock_times(), [(9, 0), (15, 0), (18, 0)])
 
 
+class CategoryChoiceTests(unittest.TestCase):
+    def test_named_category_is_the_only_choice(self):
+        travel = MagicMock(name="여행", slug="travel")
+        travel.name = "여행"
+        food = MagicMock(name="음식", slug="food")
+        food.name = "음식·요리"
+        chosen = autopilot.select_autopilot_category([food, travel], "여행")
+        self.assertIs(chosen, travel)
+
+    def test_unknown_category_selects_nothing(self):
+        food = MagicMock()
+        food.name = "음식·요리"
+        food.slug = "food"
+        self.assertIsNone(autopilot.select_autopilot_category([food], "여행"))
+
+
 class RecentPostTests(unittest.TestCase):
     def test_post_inside_the_slot_counts_as_recent(self):
         now = datetime(2026, 10, 7, 3, 38, tzinfo=timezone.utc)
