@@ -39,18 +39,15 @@ class ExternalPublisherTests(unittest.TestCase):
         for key, value in self._saved.items():
             setattr(settings, key, value)
 
-    def test_tistory_write_uses_official_endpoint(self):
+    def test_tistory_write_is_refused_after_api_shutdown(self):
         settings.tistory_access_token = "token"
         settings.tistory_blog_name = "lumen"
-        response = MagicMock()
-        response.raise_for_status.return_value = None
-        response.json.return_value = {"tistory": {"status": "200", "postId": "9", "url": "https://lumen.tistory.com/9"}}
-        with patch("autopost_api.services.publishers.tistory_publisher.httpx.post", return_value=response) as post:
-            result = TistoryPublisher().publish(_Post())
-        self.assertEqual(result["url"], "https://lumen.tistory.com/9")
-        self.assertEqual(post.call_args.args[0], "https://www.tistory.com/apis/post/write")
-        self.assertEqual(post.call_args.kwargs["data"]["blogName"], "lumen")
-        self.assertEqual(post.call_args.kwargs["data"]["visibility"], "3")
+        with patch("httpx.post") as post:
+            with self.assertRaises(RuntimeError) as raised:
+                TistoryPublisher().publish(_Post())
+        post.assert_not_called()
+        self.assertIn("2024년 2월", str(raised.exception))
+        self.assertFalse(settings.channel_configured("tistory"))
 
     def test_blogger_refreshes_token_then_writes(self):
         settings.blogger_blog_id = "123"

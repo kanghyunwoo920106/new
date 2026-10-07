@@ -62,6 +62,14 @@ def create_batch(
     unknown = [c for c in req.channels if c not in ALLOWED_CHANNELS]
     if unknown:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 채널: {', '.join(unknown)}")
+    if "tistory" in req.channels:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "티스토리 Open API 글쓰기는 2024년 2월에 종료되어 자동 발행할 수 없습니다. "
+                "글은 티스토리 에디터에서 직접 작성해야 합니다."
+            ),
+        )
     channels = list(dict.fromkeys(req.channels)) or ["site"]
     missing = [c for c in channels if not settings.channel_configured(c)]
     if missing:
