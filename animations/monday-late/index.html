@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>월요일 아침 지각 대소동</title>
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+  #stage { height: 100vh; width: auto; display: block; }
+  body.render #stage { height: 1920px; width: 1080px; }
+  text { font-family: "NanumSquare", "NanumSquareRound", "NanumGothic", sans-serif; font-weight: 800; }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1080 1920" width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="vignette" cx="50%" cy="52%" r="70%">
+      <stop offset="55%" stop-color="#000" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000" stop-opacity="0.55" />
+    </radialGradient>
+    <filter id="led-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="9" result="b" />
+      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <filter id="soul-blur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" />
+    </filter>
+    <clipPath id="mouth-clip" clipPathUnits="userSpaceOnUse">
+      <ellipse cx="0" cy="0" rx="70" ry="55" />
+    </clipPath>
+  </defs>
+
+  <g id="bg-effect">
+    <rect id="bg" x="0" y="0" width="1080" height="1920" fill="#1b2450" />
+    <rect id="flash" x="0" y="0" width="1080" height="1920" fill="#ffe14d" opacity="0" />
+    <g id="speed-lines"></g>
+    <rect x="0" y="0" width="1080" height="1920" fill="url(#vignette)" />
+  </g>
+
+  <g id="camera">
+    <g id="character">
+      <g id="body">
+        <path id="body-shape" fill="#fff" stroke="#111" stroke-width="8" stroke-linejoin="round" />
+      </g>
+
+      <g id="left-arm">
+        <ellipse cx="-120" cy="0" rx="150" ry="66" fill="#fff" stroke="#111" stroke-width="8" />
+      </g>
+      <g id="right-arm">
+        <ellipse cx="120" cy="0" rx="150" ry="66" fill="#fff" stroke="#111" stroke-width="8" />
+      </g>
+
+      <g id="head">
+        <path id="head-shape" fill="#fff" stroke="#111" stroke-width="8" stroke-linejoin="round" />
+        <ellipse id="blush-l" cx="245" cy="1130" rx="62" ry="32" fill="#ff9db4" opacity="0.65" />
+        <ellipse id="blush-r" cx="835" cy="1130" rx="62" ry="32" fill="#ff9db4" opacity="0.65" />
+
+        <g id="brows">
+          <path id="brow-l" d="M -60 0 Q 0 -18 60 0" fill="none" stroke="#111" stroke-width="14" stroke-linecap="round" />
+          <path id="brow-r" d="M -60 0 Q 0 -18 60 0" fill="none" stroke="#111" stroke-width="14" stroke-linecap="round" />
+        </g>
+
+        <g id="eyes">
+          <g id="eye-l">
+            <g class="sclera">
+              <circle r="105" fill="#fff" stroke="#111" stroke-width="8" />
+              <g class="veins" fill="none" stroke="#e3202b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></g>
+            </g>
+            <path class="eye-closed" d="M -72 0 Q 0 52 72 0" fill="none" stroke="#111" stroke-width="12" stroke-linecap="round" />
+          </g>
+          <g id="eye-r">
+            <g class="sclera">
+              <circle r="105" fill="#fff" stroke="#111" stroke-width="8" />
+              <g class="veins" fill="none" stroke="#e3202b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></g>
+            </g>
+            <path class="eye-closed" d="M -72 0 Q 0 52 72 0" fill="none" stroke="#111" stroke-width="12" stroke-linecap="round" />
+          </g>
+        </g>
+
+        <g id="pupils">
+          <g id="pupil-l"><circle r="42" fill="#111" /><circle cx="-13" cy="-15" r="12" fill="#fff" /></g>
+          <g id="pupil-r"><circle r="42" fill="#111" /><circle cx="-13" cy="-15" r="12" fill="#fff" /></g>
+        </g>
+
+        <g id="mouth">
+          <g id="mouth-shape">
+            <ellipse cx="0" cy="0" rx="70" ry="55" fill="#5b0f1a" stroke="#111" stroke-width="8" />
+            <ellipse cx="0" cy="42" rx="48" ry="28" fill="#ff6f8a" clip-path="url(#mouth-clip)" />
+          </g>
+          <g id="soul" opacity="0">
+            <path id="soul-tail" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="26" stroke-linecap="round" filter="url(#soul-blur)" />
+            <g id="soul-ghost">
+              <path d="M -90 20 C -90 -72 -50 -122 0 -122 C 50 -122 90 -72 90 20 L 90 92
+                       Q 70 66 50 96 Q 32 124 15 96 Q 0 70 -15 96 Q -32 124 -50 96 Q -70 66 -90 92 Z"
+                    fill="#ffffff" fill-opacity="0.62" stroke="#d8ecff" stroke-width="7" />
+              <path d="M -48 -30 Q -32 -18 -16 -30 M 16 -30 Q 32 -18 48 -30" fill="none" stroke="#5c6b80" stroke-width="7" stroke-linecap="round" opacity="0.8" />
+              <ellipse cx="0" cy="14" rx="14" ry="18" fill="#5c6b80" opacity="0.7" />
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <g id="fx">
+        <g id="sweat"></g>
+        <g id="anger-marks"></g>
+        <g id="zzz"></g>
+      </g>
+    </g>
+  </g>
+  <text id="title" x="540" y="82" text-anchor="middle" font-size="50" fill="#fff"
+        stroke="#111" stroke-width="10" paint-order="stroke">월요일 아침 지각 대소동</text>
+
+  <g id="clock">
+    <rect x="110" y="130" width="860" height="300" rx="44" fill="#151515" stroke="#000" stroke-width="8" />
+    <g id="clock-digits" filter="url(#led-glow)"></g>
+    <g id="clock-badge">
+      <rect x="70" y="104" width="170" height="70" rx="20" fill="#ff2b4a" stroke="#111" stroke-width="8" />
+      <text x="155" y="153" text-anchor="middle" font-size="40" fill="#fff">월 MON</text>
+    </g>
+  </g>
+
+  <text id="status" x="540" y="560" text-anchor="middle" font-size="92" fill="#fff"
+        stroke="#111" stroke-width="14" paint-order="stroke" stroke-linejoin="round"></text>
+</svg>
+
+<script src="node_modules/gsap/dist/gsap.min.js"></script>
+<script>if (!window.gsap) document.write('<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"><\/script>');</script>
+<script src="main.js"></script>
+</body>
+</html>
